@@ -3,6 +3,7 @@
 
 #include "config/CemuConfig.h"
 #include "Cafe/HW/Latte/Core/LatteOverlay.h"
+#include "Cafe/OS/libs/nsyshid/SkylanderOverlay.h"
 
 #include <imgui.h>
 #include "imgui/imgui_extension.h"
@@ -80,6 +81,11 @@ bool Renderer::ImguiBegin(bool mainWindow)
 	const Vector2f window_size{(float)w, (float)h};
 	auto& io = ImGui::GetIO();
 	io.DisplaySize = {window_size.x, window_size.y}; // should be only updated in the renderer and only when needed
+
+	// Flush wheel delta accumulated from the canvas WndProc into ImGui IO
+	// before NewFrame reads and resets it.
+	if (mainWindow)
+		SkylanderOverlay_flushWheelDelta();
 
 	ImGui_PrecacheFonts();
 	return true;

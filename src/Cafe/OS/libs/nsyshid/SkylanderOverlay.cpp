@@ -183,20 +183,22 @@ static const char* LookupName(uint16_t id, uint16_t var) {
 //  Enums + correct in-game element colors
 // ================================================================
 enum class SkyElem : uint8_t {
-    Unknown=0,Air,Dark,Earth,Fire,Life,Light,Magic,Tech,Undead,Water,_Count
+    Unknown=0,Air,Dark,Earth,Fire,Life,Light,Magic,Tech,Undead,Water,
+    Kaos,   // Unique element — only Kaos (Imaginators sensei) uses this
+    _Count
 };
 enum class SkyCat : uint8_t {
-    Figure=0,Giant,SwapForce,TrapMaster,SuperCharger,Mini,Trap,Vehicle,Item,AdventurePack,Trophy,_Count
+    Figure=0,Giant,SwapForce,TrapMaster,SuperCharger,Sensei,Mini,Trap,Vehicle,Item,AdventurePack,Trophy,_Count
 };
 enum class SkyGame : uint8_t {
     SSA=0,Giants,SwapForce,TrapTeam,SuperChargers,Imaginators,_Count
 };
 
 static const char* kElemName[(int)SkyElem::_Count] = {
-    "?","Air","Dark","Earth","Fire","Life","Light","Magic","Tech","Undead","Water"
+    "?","Air","Dark","Earth","Fire","Life","Light","Magic","Tech","Undead","Water","Kaos"
 };
 static const char* kCatName[(int)SkyCat::_Count] = {
-    "Figure","Giant","Swap Force","Trap Master","SuperCharger","Mini","Trap Crystal","Vehicle","Magic Item","Adv. Pack","Trophy"
+    "Figure","Giant","Swap Force","Trap Master","SuperCharger","Sensei","Mini","Trap Crystal","Vehicle","Magic Item","Adv. Pack","Trophy"
 };
 static const char* kGameName[(int)SkyGame::_Count] = {
     "Spyro's Adventure","Giants","Swap Force","Trap Team","SuperChargers","Imaginators"
@@ -212,9 +214,10 @@ static const ImVec4 kElemCol[(int)SkyElem::_Count] = {
     {0.15f,0.75f,0.15f,1}, // Life     — green
     {1.00f,0.90f,0.20f,1}, // Light    — gold
     {0.76f,0.18f,0.68f,1}, // Magic    — pink-purple
-    {1.00f,0.55f,0.02f,1}, // Tech     — ORANGE
-    {0.55f,0.55f,0.58f,1}, // Undead   — GRAY/SILVER
+    {1.00f,0.55f,0.02f,1}, // Tech     — orange
+    {0.55f,0.55f,0.58f,1}, // Undead   — gray/silver
     {0.12f,0.45f,1.00f,1}, // Water    — deep blue
+    {0.72f,0.08f,0.82f,1}, // Kaos     — vivid purple (unique to Kaos sensei)
 };
 static const ImVec4 kGameCol[(int)SkyGame::_Count] = {
     {0.48f,0.72f,0.28f,1},{0.68f,0.48f,0.16f,1},{0.28f,0.58f,0.88f,1},
@@ -229,8 +232,25 @@ static SkyCat CatFromId(uint16_t id) {
     if (id>=200&&id<=233)   return SkyCat::Item;
     if (id>=300&&id<=308)   return SkyCat::AdventurePack;
     if (id>=3300&&id<=3303) return SkyCat::AdventurePack;
-    if (id>=450&&id<=485)   return SkyCat::TrapMaster;
+    // Trap Masters: 2 per element (first pair in each group of 4).
+    // Light (482-483) and Dark (484-485) are ALL Trap Masters.
+    // IDs 452-453,456-457,460-461,464-465,468-469,472-473,476-477,480-481 are regular Trap Team figures.
+    switch (id) {
+        case 450: case 451: // Air:    Gusto, Thunderbolt
+        case 454: case 455: // Earth:  Wallop, Head Rush
+        case 458: case 459: // Fire:   Wildfire, Ka-Boom
+        case 462: case 463: // Water:  Snap Shot, Lob-Star
+        case 466: case 467: // Magic:  Blastermind, Enigma
+        case 470: case 471: // Tech:   Jawbreaker, Gearshift
+        case 474: case 475: // Life:   Bushwack, Tuff Luck
+        case 478: case 479: // Undead: Krypt King, Short Cut
+        case 482: case 483: // Light:  Knight Light, Spotlight
+        case 484: case 485: // Dark:   Knight Mare, Blackout
+            return SkyCat::TrapMaster;
+    }
+    if (id>=450&&id<=481)   return SkyCat::Figure;  // remaining Trap Team figures
     if (id>=500&&id<=599)   return SkyCat::Mini;
+    if (id>=600&&id<=699)   return SkyCat::Sensei;  // Imaginators Senseis
     if (id>=1000&&id<=2015) return SkyCat::SwapForce;
     if (id>=3200&&id<=3204) return SkyCat::Item;
     if (id>=3220&&id<=3241) return SkyCat::Vehicle;
@@ -239,16 +259,74 @@ static SkyCat CatFromId(uint16_t id) {
     return SkyCat::Figure;
 }
 static bool IsGiant(uint16_t id) {
-    switch(id){case 101:case 102:case 107:case 109:case 110:case 112:case 114:return true;}
+    // The 8 Giants: Swarm, Crusher, Thumpback, Ninjini,
+    //               Bouncer, Tree Rex, Eye-Brawl, Hot Head
+    switch(id){
+        case 101: // Swarm       (Air)
+        case 102: // Crusher     (Earth)
+        case 104: // Hot Head    (Fire) ← often missed
+        case 107: // Thumpback   (Water)
+        case 109: // Ninjini     (Magic)
+        case 110: // Bouncer     (Tech)
+        case 112: // Tree Rex    (Life)
+        case 114: // Eye-Brawl   (Undead)
+            return true;
+    }
     return false;
 }
 static SkyGame GameFromId(uint16_t id) {
-    if (id<=32||(id>=200&&id<=209)||(id>=300&&id<=308)||(id>=404&&id<=430)) return SkyGame::SSA;
-    if ((id>=100&&id<=115)||(id>=230&&id<=233)) return SkyGame::Giants;
-    if ((id>=1000&&id<=2015)||(id>=3000&&id<=3015)||(id>=3200&&id<=3204)||(id>=3300&&id<=3303)) return SkyGame::SwapForce;
-    if ((id>=450&&id<=485)||(id>=210&&id<=220)||(id>=500&&id<=599)) return SkyGame::TrapTeam;
-    if ((id>=3220&&id<=3241)||(id>=3400&&id<=3428)||(id>=3500&&id<=3503)) return SkyGame::SuperChargers;
-    if (id>=600&&id<=699) return SkyGame::Imaginators;
+    // ── Spyro's Adventure ─────────────────────────────────────
+    // Figures 0-32, magic items 200-209, adventure packs 300-304
+    // (Dragon's Peak, Empire of Ice, Pirate Seas, Darklight Crypt,
+    //  Volcanic Vault — exclusive battle arena for SSA),
+    // legendary variants 404/416/419/430
+    if (id<=32
+     ||(id>=200&&id<=209)
+     ||(id>=300&&id<=304)
+     ||(id>=404&&id<=430))
+        return SkyGame::SSA;
+
+    // ── Giants ────────────────────────────────────────────────
+    // Figures/giants 100-115, adventure-pack items 230-233
+    // (Hand of Fate, Piggy Bank, Rocket Ram, Tiki Speaky)
+    if ((id>=100&&id<=115)
+     ||(id>=230&&id<=233))
+        return SkyGame::Giants;
+
+    // ── Swap Force ────────────────────────────────────────────
+    // Swap-halves 1000-2015, SF figures 3000-3015,
+    // SF magic items 3200-3204,
+    // SF adventure packs 3300-3303
+    // (Sheep Wreck Island, Tower of Time, Fiery Forge, Arkeyan Crossbow)
+    if ((id>=1000&&id<=2015)
+     ||(id>=3000&&id<=3015)
+     ||(id>=3200&&id<=3204)
+     ||(id>=3300&&id<=3303))
+        return SkyGame::SwapForce;
+
+    // ── Trap Team ─────────────────────────────────────────────
+    // Trap Masters 450-485, trap crystals 210-220,
+    // minis 500-599,
+    // Trap Team adventure packs 305-308
+    // (Mirror of Mystery, Nightmare Express,
+    //  Sunscraper Spire, Midnight Museum)
+    if ((id>=450&&id<=485)
+     ||(id>=210&&id<=220)
+     ||(id>=500&&id<=599)
+     ||(id>=305&&id<=308))
+        return SkyGame::TrapTeam;
+
+    // ── SuperChargers ─────────────────────────────────────────
+    // Vehicles 3220-3241, SC drivers 3400-3428, trophies 3500-3503
+    if ((id>=3220&&id<=3241)
+     ||(id>=3400&&id<=3428)
+     ||(id>=3500&&id<=3503))
+        return SkyGame::SuperChargers;
+
+    // ── Imaginators ───────────────────────────────────────────
+    if (id>=600&&id<=699)
+        return SkyGame::Imaginators;
+
     return SkyGame::SSA;
 }
 static const std::unordered_map<uint16_t,SkyElem> s_elem = {
@@ -291,8 +369,12 @@ static const std::unordered_map<uint16_t,SkyElem> s_elem = {
     {613,SkyElem::Earth},{614,SkyElem::Undead},{615,SkyElem::Magic},{616,SkyElem::Magic},
     {617,SkyElem::Air},{618,SkyElem::Undead},{619,SkyElem::Light},{620,SkyElem::Fire},
     {621,SkyElem::Magic},{622,SkyElem::Dark},{623,SkyElem::Earth},{624,SkyElem::Tech},
-    {625,SkyElem::Magic},{626,SkyElem::Tech},{627,SkyElem::Unknown},{628,SkyElem::Air},
-    {629,SkyElem::Water},{630,SkyElem::Unknown},{631,SkyElem::Unknown},
+    {625,SkyElem::Magic},{626,SkyElem::Tech},
+    {627,SkyElem::Kaos},   // Kaos          — unique Kaos element
+    {628,SkyElem::Air},
+    {629,SkyElem::Water},
+    {630,SkyElem::Earth},  // Crash Bandicoot — Earth sensei
+    {631,SkyElem::Tech},   // Dr. Neo Cortex  — Tech sensei
     {1000,SkyElem::Air},{1001,SkyElem::Air},{1002,SkyElem::Earth},{1003,SkyElem::Earth},
     {1004,SkyElem::Fire},{1005,SkyElem::Fire},{1006,SkyElem::Life},{1007,SkyElem::Life},
     {1008,SkyElem::Magic},{1009,SkyElem::Magic},{1010,SkyElem::Tech},{1011,SkyElem::Tech},
@@ -303,7 +385,7 @@ static const std::unordered_map<uint16_t,SkyElem> s_elem = {
     {2012,SkyElem::Undead},{2013,SkyElem::Undead},{2014,SkyElem::Water},{2015,SkyElem::Water},
     {3000,SkyElem::Air},{3001,SkyElem::Air},{3002,SkyElem::Earth},{3003,SkyElem::Earth},
     {3004,SkyElem::Fire},{3005,SkyElem::Fire},{3006,SkyElem::Life},{3007,SkyElem::Life},
-    {3008,SkyElem::Life},{3009,SkyElem::Magic},{3010,SkyElem::Tech},{3011,SkyElem::Tech},
+    {3008,SkyElem::Earth},{3009,SkyElem::Magic},{3010,SkyElem::Tech},{3011,SkyElem::Tech}, // 3008=Dune Bug (Earth)
     {3012,SkyElem::Undead},{3013,SkyElem::Undead},{3014,SkyElem::Water},{3015,SkyElem::Water},
     {3200,SkyElem::Unknown},{3201,SkyElem::Unknown},{3202,SkyElem::Unknown},{3203,SkyElem::Unknown},{3204,SkyElem::Unknown},
     {3300,SkyElem::Unknown},{3301,SkyElem::Unknown},{3302,SkyElem::Unknown},{3303,SkyElem::Unknown},
@@ -366,6 +448,23 @@ static void EnablePortal(){
 // ================================================================
 //  Async state
 // ================================================================
+// Wheel delta forwarded from the Win32 message handler (UI thread → render thread).
+static std::mutex  g_wheelMtx;
+static float       g_pendingWheel = 0.f;
+
+void SkylanderOverlay_addWheelDelta(float delta) {
+    std::lock_guard lk(g_wheelMtx);
+    g_pendingWheel += delta;
+}
+
+void SkylanderOverlay_flushWheelDelta() {
+    std::lock_guard lk(g_wheelMtx);
+    if (g_pendingWheel != 0.f) {
+        ImGui::GetIO().MouseWheel += g_pendingWheel;
+        g_pendingWheel = 0.f;
+    }
+}
+
 static bool g_visible=false,g_f8Prev=false;
 static std::atomic<bool> g_fpRun{false},g_fpDone{false};
 static int g_fpSlot=-1; static std::wstring g_fpPath; static std::mutex g_fpMtx;
@@ -629,7 +728,7 @@ void SkylanderOverlay_render(bool isPadView)
             ImGuiWindowFlags_NoInputs);         // <-- key: game keeps mouse focus
 
         ColorDot(dotC);                         // draws circle, advances cursor
-        ImGui::TextUnformatted(enabled ? "Portal ON" : "Portal OFF");
+        ImGui::TextUnformatted("Portal");
         ImGui::PushStyleColor(ImGuiCol_Text, { 0.50f,0.55f,0.65f,1.f });
         ImGui::TextUnformatted(g_visible ? "F8 · click close" : "F8 · click open");
         ImGui::PopStyleColor();
@@ -792,6 +891,7 @@ void SkylanderOverlay_render(bool isPadView)
     const float panelH = ImGui::GetContentRegionAvail().y;
     const float slotW  = 238.f;                              // left panel width
 
+
     // ============================================================
     //  LEFT PANEL — Portal Slots
     // ============================================================
@@ -853,6 +953,12 @@ void SkylanderOverlay_render(bool isPadView)
                 if (ImGui::Selectable(label, isSel,
                         ImGuiSelectableFlags_None, ImVec2(0.f, 0.f)))
                     g_selectedSlot = i;
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) {
+                    ImGui::BeginTooltip();
+                    ColorDot(kElemCol[(int)s.elem]);
+                    ImGui::TextUnformatted(s.name.c_str());
+                    ImGui::EndTooltip();
+                }
             } else {
                 char label[32];
                 snprintf(label, sizeof(label), "empty##ss%d", i);

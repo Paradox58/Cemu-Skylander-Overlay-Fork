@@ -7,3 +7,9 @@
 // full manager window.
 void SkylanderOverlay_render(bool isPadView);
 void SkylanderOverlay_init();
+// Called from the Win32 message handler to forward wheel events that the
+// game's input capture would otherwise swallow before ImGui sees them.
+void SkylanderOverlay_addWheelDelta(float delta);
+// Called from Renderer::ImguiBegin (after SetCurrentContext, before NewFrame)
+// to flush the accumulated delta into the active ImGui IO.
+void SkylanderOverlay_flushWheelDelta();

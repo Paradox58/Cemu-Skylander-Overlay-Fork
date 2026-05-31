@@ -35,6 +35,7 @@
 #include "config/LaunchSettings.h"
 
 #include "Cafe/Filesystem/FST/FST.h"
+#include "Cafe/OS/libs/nsyshid/SkylanderOverlay.h"
 
 #include "wxgui/TitleManager.h"
 #include "wxgui/EmulatedUSBDevices/EmulatedUSBDeviceFrame.h"
@@ -50,6 +51,7 @@
 #include "input/InputManager.h"
 
 #if BOOST_OS_WINDOWS
+#include <commctrl.h>
 #define exit(__c) ExitProcess(__c)
 #else
 #define exit(__c) _Exit(__c)
@@ -849,7 +851,6 @@ WXLRESULT MainWindow::MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lPara
 			InputManager::instance().on_device_changed();
 		}
 	}
-
 	return wxFrame::MSWWindowProc(nMsg, wParam, lParam);
 }
 #endif
@@ -1591,6 +1592,15 @@ void MainWindow::AsyncSetTitle(std::string_view windowTitle)
 	g_mainFrame->QueueEvent(set_title_event.Clone());
 }
 
+#ifdef _WIN32
+static LRESULT CALLBACK CanvasWndProcHook(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
+{
+	if (msg == WM_MOUSEWHEEL)
+		SkylanderOverlay_addWheelDelta(GET_WHEEL_DELTA_WPARAM(wParam) / (float)WHEEL_DELTA);
+	return DefSubclassProc(hWnd, msg, wParam, lParam);
+}
+#endif
+
 void MainWindow::CreateCanvas()
 {
     // create panel for canvas
@@ -1620,6 +1630,11 @@ void MainWindow::CreateCanvas()
 	if (!m_render_canvas)
 		cemu_assert(false && "Failed to create canvas or invalid graphics API selected");
 	cemu_assert(m_render_canvas != nullptr);
+
+#ifdef _WIN32
+	if (HWND hwnd = (HWND)m_render_canvas->GetHWND())
+		SetWindowSubclass(hwnd, CanvasWndProcHook, 1, 0);
+#endif
 
 	// mouse events
 	m_render_canvas->Bind(wxEVT_MOTION, &MainWindow::OnMouseMove, this);
@@ -1654,6 +1669,10 @@ void MainWindow::DestroyCanvas()
 	}
 	if (m_render_canvas)
 	{
+#ifdef _WIN32
+		if (HWND hwnd = (HWND)m_render_canvas->GetHWND())
+			RemoveWindowSubclass(hwnd, CanvasWndProcHook, 1);
+#endif
 		m_render_canvas->Destroy();
 		m_render_canvas = nullptr;
 	}
@@ -1747,6 +1766,8 @@ void MainWindow::OnMouseWheel(wxMouseEvent& event)
 	const float delta = event.GetWheelRotation(); // in 120 steps -> max reached ~480 (?)
 	auto& instance = InputManager::instance();
 	instance.m_mouse_wheel = (delta / 120.0f);
+
+	SkylanderOverlay_addWheelDelta(delta / 120.0f);
 
 	event.Skip();
 }
