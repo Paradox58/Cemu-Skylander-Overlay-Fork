@@ -16,6 +16,7 @@
 #include "Cafe/OS/libs/erreula/erreula.h"
 #include "input/InputManager.h"
 #include "Cafe/OS/libs/swkbd/swkbd.h"
+#include "Cafe/OS/libs/nsyshid/SkylanderOverlay.h"
 
 uint32 prevScissorX = 0;
 uint32 prevScissorY = 0;
@@ -973,6 +974,7 @@ void LatteRenderTarget_copyToBackbuffer(LatteTextureView* textureView, bool isPa
 	swkbd_render(!isPadView);
 	nn::erreula::render(!isPadView);
 	LatteOverlay_render(isPadView);
+	SkylanderOverlay_render(isPadView);
 	g_renderer->ImguiEnd();
 }
 
